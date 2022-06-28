@@ -20,57 +20,47 @@ module PlayerAttributes
 end
 
 module PlayerActions
-  class ActionNotImplementedError < StandardError; end
-
   def self.included(klass)
     klass.extend(ClassMethods)
   end
 
   module ClassMethods
-    def has_actions(*actions)
-      actions.each do |action|
-        self.send(:define_method, action) do |*args|
-          raise ActionNotImplementedError, "this action has not been given to this player yet"
-        end
-        self.default_player_actions << action
-      end
-    end
+    @@player_actions = []
 
     def all_player_actions
-      DefaultPlayer.default_player_actions
+      @@player_actions
     end
 
     def has_action(action, &block)
       self.send(:define_method, action , block)
-      self.player_actions << action
+      @@player_actions << action
     end
   end
 
+  def available_actions
+    self.class.all_player_actions.select{|act| self.respond_to?(act)}
+  end
+
   def random_action(other_player)
-    self.send(self.class.all_player_actions.sample, other_player)
+    self.send(available_actions.sample, other_player)
   end
 end
 
 class DefaultPlayer
-  @default_player_actions = []
-  class << self
-    attr_accessor :default_player_actions
-  end  
   include PlayerAttributes
   include PlayerActions
   
   has_attributes :name, :health, :strength, :damage
-  has_actions :attack, :run
 
   class PlayerIsDead < StandardError; end
-  def attack(other_player)
+  has_action :attack do |other_player|
     other_player.health -= self.damage
     puts "#{self.name} attacks #{other_player.name} and does #{self.damage} damage"
     puts "#{other_player.name} now has #{other_player.health} health"
     raise PlayerIsDead, "#{other_player.name} has died" if other_player.health <= 0
   end
 
-  def run(other_player)
+  has_action :run do |other_player|
     self.health += 15
     puts "#{self.name} runs from #{other_player.name} and does 0 damage"
     puts "#{self.name} now has #{self.health} health"
@@ -78,11 +68,6 @@ class DefaultPlayer
 end
   
 class Human < DefaultPlayer
-  @player_actions = []
-  class << self
-    attr_accessor :player_actions
-  end
-
   has_action :talk_their_way_out_of_it do |other|
     self.health += 10
     puts "#{self.name} has talked their way out of this encounter, and gained 10 health."
@@ -93,26 +78,13 @@ class Human < DefaultPlayer
     puts "#{self.name} has thrown a potion, dealing 50 damage."
     raise PlayerIsDead, "#{other.name} has died" if other.health <= 0
   end
-
-  def self.all_player_actions
-    player_actions + super
-  end
 end
 
 class Dragon < DefaultPlayer
-  @player_actions = []
-  class << self
-    attr_accessor :player_actions
-  end
-  
   has_action :stomp do |other|
     other.health -= 20
     puts "#{self.name} has stomped on #{other.name} and dealt 20 damage."
     raise PlayerIsDead, "#{other.name} has died" if other.health <= 0
-  end
-
-  def self.all_player_actions
-    player_actions + super
   end
 end
 
