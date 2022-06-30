@@ -61,7 +61,7 @@ module PlayerActions
 
     i = actions.index(action.strip.downcase)
 
-    self.send(self.class.all_player_actions[i], targets)
+    self.send(self.class.all_player_actions[i], targets) if actions.include?(action.strip.downcase)
   end
 
   def calculate_damage(attacker, damage_mod, target, can_dodge = true)
@@ -212,6 +212,7 @@ end
 class Battle
   class TooManyPlayersError < StandardError; end
   class LastPlayerLeft < StandardError; end
+  class InvalidPlayerCount < StandardError; end
 
   attr_reader :players
   def initialize(*players)
@@ -225,19 +226,21 @@ class Battle
     players.shuffle
   end
 
-  def check_if_dead(player)
-    if player.current_health <= 0
-      puts "#{player.name} has been eliminated".red
-      # `say #{player.name} has been eliminated` 
-      players.delete(player)
+  def check_if_dead(players)
+    players.each do |player|
+      if player.current_health <= 0
+        puts "#{player.name} has been eliminated".red
+        # `say #{player.name} has been eliminated` 
+        players.delete(player)
+      end
     end
   end
 
   def player_update(players)
+    check_if_dead(players)
     puts "Totals:".light_blue
     players.each do |player|
-      puts "#{player.name}: #{player.current_health}/#{player.max_health} HP and #{player.block} block".light_blue
-      check_if_dead(player)
+      puts "#{player.name} (#{player.class}): #{player.current_health}/#{player.max_health} HP and #{player.block} block".light_blue
     end
     raise LastPlayerLeft, "#{players[0].name} is the last player remaining! VICTORY!!!" if players.size <= 1
     puts "=" * 8
@@ -245,13 +248,11 @@ class Battle
 
 
   def begin
-    puts "Select number of players"
-    player_count = Integer(gets) rescue nil
-    return unless player_count
-    users = setPlayers(player_count)
+    users = setPlayers
+    npcs = setNPCs
+
     `say FIGHT`
-    (1..100).each do |round|
-      
+    (1..100).each do |round|  
       `say Round #{round}`
       puts "Round #{round}".green
       players = shuffle_players
@@ -276,7 +277,32 @@ class Battle
     end
   end
 
-  def setPlayers(player_count)
+  def setNPCs
+    puts "Select number of NPCs to fight against"
+    count = Integer(gets) rescue nil
+    raise InvalidPlayerCount, "please put in a valid number" unless count
+
+    names = ["Steve", "Sam", "Jess", "Scott", "Anneka", "Chelsea"]
+
+    (1..count).each do |i|
+      # TO LEARN: There has to be a better way to do this
+      random = Random.new.rand(1..3)
+      case random
+      when 1
+        players.push(Human.new(name: names.sample, current_health: 80, max_health: 80, strength: 6, block: 5, dodge: 5))
+      when 2
+        players.push(Dragon.new(name: names.sample, current_health: 125, max_health: 125, strength: 8, block: 5, dodge: 2))
+      when 3
+        players.push(Giant.new(name: names.sample, current_health: 150, max_health: 150, strength: 10, block: 5, dodge: 1))
+      end
+    end
+  end
+
+  def setPlayers
+    puts "Select number of players"
+    player_count = Integer(gets) rescue nil
+    raise InvalidPlayerCount, "please put in a valid number" unless player_count
+
     current_players = []
     (1..player_count).each do |i|
       player = setPlayer
@@ -313,12 +339,12 @@ class Battle
 
 end
 
-john = Human.new(name: "John", current_health: 80, max_health: 80, strength: 6, block: 5, dodge: 5)
-dragon = Dragon.new(name: "Boromir", current_health: 125, max_health: 125, strength: 8, block: 5, dodge: 2)
-evan = Human.new(name: "Evan", current_health: 100, max_health: 100, strength: 4, block: 5, dodge: 5)
-stacy = Giant.new(name: "Stacy", current_health: 150, max_health: 150, strength: 10, block: 5, dodge: 1)
+# john = Human.new(name: "John", current_health: 80, max_health: 80, strength: 6, block: 5, dodge: 5)
+# dragon = Dragon.new(name: "Boromir", current_health: 125, max_health: 125, strength: 8, block: 5, dodge: 2)
+# evan = Human.new(name: "Evan", current_health: 100, max_health: 100, strength: 4, block: 5, dodge: 5)
+# stacy = Giant.new(name: "Stacy", current_health: 150, max_health: 150, strength: 10, block: 5, dodge: 1)
 
-Battle.new(dragon, stacy, evan).begin
+Battle.new().begin
 
 # TODO: 
 
