@@ -52,6 +52,18 @@ module PlayerActions
     self.send(self.class.all_player_actions.sample, targets)
   end
 
+  def player_turn(targets)
+    actions = self.class.all_player_actions.map { |s| s.to_s }
+
+    puts "Pick an action: #{actions}"
+    action = gets
+    player_turn(targets) unless actions.include?(action.strip.downcase)
+
+    i = actions.index(action.strip.downcase)
+
+    self.send(self.class.all_player_actions[i], targets)
+  end
+
   def calculate_damage(attacker, damage_mod, target, can_dodge = true)
     damage = 0
 
@@ -233,7 +245,7 @@ class Battle
 
 
   def begin
-    setPlayer
+    user = setPlayer
     `say FIGHT`
     (1..100).each do |round|
       
@@ -245,7 +257,12 @@ class Battle
         targets = players.clone 
         targets.delete_at(i)
 
-        current.random_action(targets)
+        if current == user
+          puts "user action"
+          current.player_turn(targets)
+        else
+          current.random_action(targets)
+        end
         puts "..."
       end
       
@@ -277,6 +294,8 @@ class Battle
     puts "player created, press any key to continue..." 
     gets
     players.push(player)
+
+    player
   end
 
 end
