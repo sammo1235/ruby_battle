@@ -339,11 +339,6 @@ class Battle
 
 end
 
-# john = Human.new(name: "John", current_health: 80, max_health: 80, strength: 6, block: 5, dodge: 5)
-# dragon = Dragon.new(name: "Boromir", current_health: 125, max_health: 125, strength: 8, block: 5, dodge: 2)
-# evan = Human.new(name: "Evan", current_health: 100, max_health: 100, strength: 4, block: 5, dodge: 5)
-# stacy = Giant.new(name: "Stacy", current_health: 150, max_health: 150, strength: 10, block: 5, dodge: 1)
-
 Battle.new().begin
 
 # TODO: 
