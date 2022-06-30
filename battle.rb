@@ -245,7 +245,10 @@ class Battle
 
 
   def begin
-    user = setPlayer
+    puts "Select number of players"
+    player_count = Integer(gets) rescue nil
+    return unless player_count
+    users = setPlayers(player_count)
     `say FIGHT`
     (1..100).each do |round|
       
@@ -257,8 +260,9 @@ class Battle
         targets = players.clone 
         targets.delete_at(i)
 
-        if current == user
-          puts "user action"
+        if users.include?(current)
+          puts "Its #{current.name}'s action..."
+          `say Its #{current.name}s turn`
           current.player_turn(targets)
         else
           current.random_action(targets)
@@ -270,6 +274,16 @@ class Battle
       puts "press any key to continue to next round..."
       gets
     end
+  end
+
+  def setPlayers(player_count)
+    current_players = []
+    (1..player_count).each do |i|
+      player = setPlayer
+      current_players.push(player)
+      players.push(player)
+    end
+    current_players
   end
 
   def setPlayer
@@ -291,9 +305,8 @@ class Battle
       puts "how did we get here"
     end
 
-    puts "player created, press any key to continue..." 
+    puts "player created, press any key to continue...".green
     gets
-    players.push(player)
 
     player
   end
