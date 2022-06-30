@@ -249,7 +249,7 @@ class Battle
     `say FIGHT`
     (1..100).each do |round|
       
-      # `say Round #{round}`
+      `say Round #{round}`
       puts "Round #{round}".green
       players = shuffle_players
 
@@ -264,11 +264,11 @@ class Battle
           current.random_action(targets)
         end
         puts "..."
+        player_update(players)
       end
       
-      player_update(players)
-      # puts "press any key to continue to next round..."
-      # gets
+      puts "press any key to continue to next round..."
+      gets
     end
   end
 
