@@ -21,6 +21,29 @@ module PlayerAttributes
   end
 end
 
+module ActionAttributes
+  require 'colorize'
+
+  def self.included(klass)
+    klass.extend(ClassMethods)
+  end
+
+  class ActionMustHaveNameError < StandardError; end
+  def initialize(*attrs)
+    attrs = attrs.select {|a| a.is_a? Hash }.first
+    raise ActionMustHaveNameError unless attrs.keys.include? :name
+    attrs.each do |attr, value|
+      instance_variable_set("@#{attr}", value)
+    end
+  end
+
+  module ClassMethods
+    def has_attributes(*attrs)
+      attr_accessor *attrs
+    end
+  end
+end
+
 module PlayerActions
   class ActionNotImplementedError < StandardError; end
 
@@ -46,6 +69,11 @@ module PlayerActions
       self.send(:define_method, action , block)
       self.player_actions << action
     end
+  end
+
+  # I do not want this here
+  def show_target_health(target)
+    puts "#{target.name} now has #{current_health}/#{max_health} HP"
   end
 
   def random_action(targets)
@@ -94,6 +122,77 @@ module PlayerActions
   end
 end
 
+class Action
+  include ActionAttributes
+  has_attributes :name, :dmg_mod, :type, :targets
+
+  def calculate_damage(attacker, damage_mod, target, can_dodge = true)
+    damage = 0
+
+    if can_dodge == true
+      # See if the target dodges the attack
+      random = Random.new.rand(1..10)
+      return "but #{target.name} dodges and takes 0 damage" if random <= target.dodge
+    end
+
+    # Calculate damage based on attacker strength and target block
+    damage = damage_mod * attacker.strength
+
+    # Minus block from attack and then reduce block by attack amount (can't go negative)
+    block_difference = target.block.clone - damage.clone
+    damage_result = "for #{damage.clone} but #{target.name} blocks #{target.block.clone} " if target.block > 0
+
+    damage -= target.block
+    
+
+    # reduce block by damage done
+    target.block = block_difference 
+    target.block = 1 if target.block <= 0
+
+    damage = 0 if damage < 0
+    target.current_health -= damage
+    
+    damage_result += "and #{target.name} takes #{damage} damage"
+  end
+end
+
+class SingleTarget < Action
+  def use(attacker, targets)
+    target = targets.first
+
+    if attacker&.player == true
+      target_names = []
+      targets.each do |t|
+        target_names.push(t.name.downcase)
+      end
+      puts "Pick a target from #{target_names}"
+      selection = gets
+      
+      use(attacker, targets) unless target_names.include?(selection.strip.downcase)
+
+      targets.each do |t|
+        if selection.strip.downcase == t.name.strip.downcase
+          target = t
+        end
+      end 
+    else
+      target = targets.sample
+    end
+    
+    damage_result = calculate_damage(attacker, self.dmg_mod, target)
+    puts "#{attacker.name} attacks #{target.name} #{damage_result}"
+  end
+end
+
+class Splash < Action
+  def use(attacker, targets)
+    targets.each do |target|
+      damage_result = calculate_damage(attacker, self.dmg_mod, target)
+      puts "#{attacker.name} attacks #{target.name} #{damage_result}"
+    end
+  end
+end
+
 class DefaultPlayer
   @default_player_actions = []
   class << self
@@ -102,7 +201,7 @@ class DefaultPlayer
   include PlayerAttributes
   include PlayerActions
   
-  has_attributes :name, :current_health, :max_health, :strength, :damage, :block, :dodge
+  has_attributes :name, :current_health, :max_health, :strength, :damage, :block, :dodge, :player
   has_actions :attack, :prepare
 
   def pick_target(targets)
@@ -110,11 +209,8 @@ class DefaultPlayer
   end
 
   def attack(targets)
-    target = pick_target(targets)
-    damage_result = calculate_damage(self, 3, target)
-
-    puts "#{self.name} attacks #{target.name} #{damage_result}"
-    puts "#{target.name} now has #{target.current_health}/#{target.max_health}HP".light_blue
+    attack = SingleTarget.new(name: "attack", dmg_mod: 2, type: "single")
+    attack.use(self, targets)
   end
 
   def prepare(var)
@@ -129,7 +225,7 @@ class Human < DefaultPlayer
     attr_accessor :player_actions
   end
 
-  has_action :talk_their_way_out_of_it do |targets|
+  has_action :trick do |targets|
     target = pick_target(targets)
     puts "#{self.name} tries to talk their way out of an encounter with #{target.name}..."
     
@@ -149,9 +245,7 @@ class Human < DefaultPlayer
 
     targets.each do |target|
       puts "...#{calculate_damage(self, 10, target)}"
-    end
-
-    
+    end 
   end
 
   def self.all_player_actions
@@ -190,6 +284,7 @@ class Giant < DefaultPlayer
     target = pick_target(targets)
 
     puts "#{self.name} stomps on #{target.name} #{calculate_damage(self, 5, target)}"
+    show_target_health(target)
   end
 
   has_action :war_cry do |targets|
@@ -232,6 +327,7 @@ class Battle
         puts "#{player.name} has been eliminated".red
         # `say #{player.name} has been eliminated` 
         players.delete(player)
+        puts "players left: #{players}"
       end
     end
   end
@@ -302,12 +398,19 @@ class Battle
     puts "Select number of players"
     player_count = Integer(gets) rescue nil
     raise InvalidPlayerCount, "please put in a valid number" unless player_count
-
     current_players = []
-    (1..player_count).each do |i|
-      player = setPlayer
-      current_players.push(player)
-      players.push(player)
+
+    if player_count == 100 #lets dev skip character creation
+      bob = Human.new(name: "bob", current_health: 80, max_health: 80, strength: 6, block: 5, dodge: 5, player: true)
+      puts "you have chosen bob"
+      current_players.push(bob)
+      players.push(bob)
+    else
+      (1..player_count).each do |i|
+        player = setPlayer
+        current_players.push(player)
+        players.push(player)
+      end
     end
     current_players
   end
@@ -319,14 +422,14 @@ class Battle
     setPlayer unless ["human", "giant", "dragon"].include?(race.strip.downcase)
 
     puts "Enter a username:"
-    name = gets
+    name = gets.capitalize
     case race
     when "human"
-      player = Human.new(name: name.strip, current_health: 80, max_health: 80, strength: 6, block: 5, dodge: 5)
+      player = Human.new(name: name.strip, current_health: 80, max_health: 80, strength: 6, block: 5, dodge: 5, player: true)
     when "dragon"
-      player = Dragon.new(name: name.strip, current_health: 125, max_health: 125, strength: 8, block: 5, dodge: 2)
+      player = Dragon.new(name: name.strip, current_health: 125, max_health: 125, strength: 8, block: 5, dodge: 2, player: true)
     when "giant"
-      player = Giant.new(name: name.strip, current_health: 150, max_health: 150, strength: 10, block: 5, dodge: 1)
+      player = Giant.new(name: name.strip, current_health: 150, max_health: 150, strength: 10, block: 5, dodge: 1, player: true)
     else
       puts "how did we get here"
     end
