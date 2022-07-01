@@ -28,10 +28,8 @@ module ActionAttributes
     klass.extend(ClassMethods)
   end
 
-  class ActionMustHaveNameError < StandardError; end
   def initialize(*attrs)
     attrs = attrs.select {|a| a.is_a? Hash }.first
-    raise ActionMustHaveNameError unless attrs.keys.include? :name
     attrs.each do |attr, value|
       instance_variable_set("@#{attr}", value)
     end
@@ -124,7 +122,7 @@ end
 
 class Action
   include ActionAttributes
-  has_attributes :name, :dmg_mod, :type, :targets, :attack_msg
+  has_attributes :user, :targets, :dmg_mod, :stat_val, :action_msg
 
   def calculate_damage(attacker, damage_mod, target, can_dodge = true)
     damage = 0
@@ -136,7 +134,7 @@ class Action
     end
 
     # Calculate damage based on attacker strength and target block
-    damage = damage_mod * attacker.strength
+    damage = damage_mod * self.stat_val
 
     # Minus block from attack and then reduce block by attack amount (can't go negative)
     block_difference = target.block.clone - damage.clone
@@ -154,13 +152,11 @@ class Action
     
     damage_result += "and #{target.name} takes #{damage} damage"
   end
-end
 
-class SingleTarget < Action
-  def use(attacker, targets)
+  def select_target(targets)
     target = targets.first
 
-    if attacker&.player == true
+    if self.user&.player == true
       target_names = []
       targets.each do |t|
         target_names.push(t.name.downcase)
@@ -168,7 +164,7 @@ class SingleTarget < Action
       puts "Pick a target from #{target_names}"
       selection = gets
       
-      use(attacker, targets) unless target_names.include?(selection.strip.downcase)
+      use(self.user, targets) unless target_names.include?(selection.strip.downcase)
 
       targets.each do |t|
         if selection.strip.downcase == t.name.strip.downcase
@@ -178,18 +174,46 @@ class SingleTarget < Action
     else
       target = targets.sample
     end
+
+    target
+  end
+end
+
+class SingleTarget < Action
+  def use
+    targets = self.targets
+    target = select_target(targets)
     
-    damage_result = calculate_damage(attacker, self.dmg_mod, target)
-    puts "#{attacker.name} #{self.attack_msg} #{target.name} #{damage_result}"
+    damage_result = calculate_damage(self.user, self.dmg_mod, target)
+    puts "#{self.user.name} #{self.action_msg} #{target.name} #{damage_result}"
   end
 end
 
 class Splash < Action
   def use(attacker, targets)
-    puts attack_msg
+    puts action_msg
     targets.each do |target|
       damage_result = calculate_damage(attacker, self.dmg_mod, target)
       puts "#{damage_result}"
+    end
+  end
+end
+
+class Buff < Action
+  def use(stat, buff_mod)
+    case stat
+    when "block"
+      self.user.block += buff_mod
+    when "health"
+      self.user.current_health += buff_mod
+    when "dodge"
+      self.user.dodge += buff_mod
+    end
+
+    if buff_mod > 0
+      puts "#{self.action_msg}, they increase their #{stat} increases by #{buff_mod}"
+    else
+      puts "#{self.action_msg}, their #{stat} decreases by #{buff_mod}"
     end
   end
 end
@@ -202,7 +226,7 @@ class DefaultPlayer
   include PlayerAttributes
   include PlayerActions
   
-  has_attributes :name, :current_health, :max_health, :strength, :damage, :block, :dodge, :player
+  has_attributes :name, :current_health, :max_health, :strength, :intelligence, :damage, :block, :dodge, :player
   has_actions :attack, :prepare
 
   def pick_target(targets)
@@ -210,13 +234,13 @@ class DefaultPlayer
   end
 
   def attack(targets)
-    attack = SingleTarget.new(name: "attack", dmg_mod: 2, attack_msg: "attacks")
-    attack.use(self, targets)
+    attack = SingleTarget.new(user: self, targets: targets, dmg_mod: 4, action_msg: "attacks", stat_val: self.strength)
+    attack.use
   end
 
   def prepare(var)
-    self.block += 5
-    puts "#{self.name} hunkers down to prepare for the coming attacks, their block goes up to #{self.block}"
+    prepare = Buff.new(user: self, action_msg: "#{self.name} hunkers down to prepare for coming attacks")
+    prepare.use("block", 5)
   end
 end
   
@@ -227,22 +251,23 @@ class Human < DefaultPlayer
   end
 
   has_action :trick do |targets|
-    target = pick_target(targets)
-    puts "#{self.name} tries to talk their way out of an encounter with #{target.name}..."
-    
-    damage_result = calculate_damage(target, 2, self, false)
+    trick = SingleTarget.new(user: self, targets: [self], action_msg: "doesn't fall for it and attacks", dmg_mod: 3)
+    trick.user = trick.select_target(targets)
+  
 
-    random = Random.new.rand(1..5)
-    if random <= 2
-      puts "#{self.name} failed, #{target.name} attacks #{damage_result}"
+    puts "#{self.name} tries to talk their way out of an encounter with #{trick.user.name}..."
+
+    if (self.intelligence + Random.new.rand(1..10)) <= (trick.user.intelligence + Random.new.rand(1..10))
+      trick.stat_val = trick.user.strength
+      trick.use
     else
-      self.current_health += 15
-      puts "#{self.name} somehow succeeded, and healed 15HP."
+      trick = Buff.new(user: self, action_msg: "#{self.name} somehow succeeded. They escape to a corner to heal")
+      trick.use("health", 15)
     end
   end
 
   has_action :throws_potion do |targets|
-    splash = Splash.new(name: "throw_potion", dmg_mod: 4, attack_msg: "#{self.name} throws a potion...")
+    splash = Splash.new(name: "throw_potion", dmg_mod: 4, action_msg: "#{self.name} throws a potion...", stat_val: self.intelligence)
     splash.use(self, targets)
   end
 
@@ -258,7 +283,7 @@ class Dragon < DefaultPlayer
   end
   
   has_action :fire_breath do |targets|
-    fire = Splash.new(name: "fire_breath", dmg_mod: 5, attack_msg: "#{self.name} breaths fire over the arena...")
+    fire = Splash.new(name: "fire_breath", dmg_mod: 5, action_msg: "#{self.name} breaths fire over the arena...", stat_val: self.strength)
     fire.use(self, targets)
   end
 
@@ -274,19 +299,21 @@ class Giant < DefaultPlayer
   end
   
   has_action :stomp do |targets|
-    stomp = SingleTarget.new(name: "Stomp", damage_mod: 5, attack_msg: "stomps on")
-    stomp.use(self, targets)
+    stomp = SingleTarget.new(user: self, targets: targets, dmg_mod: 5, action_msg: "stomps on", stat_val: self.strength)
+    stomp.use
   end
 
   has_action :war_cry do |targets|
     puts "#{self.name} lets out a rallying war cry"
+
     random = Random.new.rand(1..10)
+    war_cry = Buff.new(user: self)
     if random <= 3 
-      self.current_health -= 20
-      puts "Everyone laughs at #{self.name}, they take #{10 * targets.size} damage from embarrassment"
+      war_cry.action_msg = "Everyone laughts at #{self.name}"
+      war_cry.use("health", (-10 * targets.size))
     else
-      self.block += 20
-      puts "Everyone cowers before #{self.name}, #{self.name} bolsters themselves and increase their block by 20"
+      war_cry.action_msg = "Everyone cowers before #{self.name}"
+      war_cry.use("block", 20)
     end
   end
 
@@ -316,7 +343,7 @@ class Battle
     players.each do |player|
       if player.current_health <= 0
         puts "#{player.name} has been eliminated".red
-        # `say #{player.name} has been eliminated` 
+        # # `say #{player.name} has been eliminated` 
         players.delete(player)
         puts "players left: #{players}"
       end
@@ -338,9 +365,9 @@ class Battle
     users = setPlayers
     npcs = setNPCs
 
-    `say FIGHT`
+    # `say FIGHT`
     (1..100).each do |round|  
-      `say Round #{round}`
+      # `say Round #{round}`
       puts "Round #{round}".green
       players = shuffle_players
 
@@ -350,7 +377,7 @@ class Battle
 
         if users.include?(current)
           puts "Its #{current.name}'s action..."
-          `say Its #{current.name}s turn`
+          # `say Its #{current.name}s turn`
           current.player_turn(targets)
         else
           current.random_action(targets)
@@ -376,11 +403,11 @@ class Battle
       random = Random.new.rand(1..3)
       case random
       when 1
-        players.push(Human.new(name: names.sample, current_health: 80, max_health: 80, strength: 6, block: 5, dodge: 5))
+        players.push(Human.new(name: names.sample, current_health: 80, max_health: 80, strength: 6, intelligence:8, block: 5, dodge: 5))
       when 2
-        players.push(Dragon.new(name: names.sample, current_health: 125, max_health: 125, strength: 8, block: 5, dodge: 2))
+        players.push(Dragon.new(name: names.sample, current_health: 125, max_health: 125, strength: 8, block: 5, intelligence: 5, dodge: 2))
       when 3
-        players.push(Giant.new(name: names.sample, current_health: 150, max_health: 150, strength: 10, block: 5, dodge: 1))
+        players.push(Giant.new(name: names.sample, current_health: 150, max_health: 150, strength: 10, block: 5, intelligence: 3, dodge: 1))
       end
     end
   end
@@ -392,7 +419,7 @@ class Battle
     current_players = []
 
     if player_count == 100 #lets dev skip character creation
-      bob = Human.new(name: "bob", current_health: 80, max_health: 80, strength: 6, block: 5, dodge: 5, player: true)
+      bob = Human.new(name: "bob", current_health: 80, max_health: 80, strength: 6, block: 5, dodge: 5, intelligence: 8, player: true)
       puts "you have chosen bob"
       current_players.push(bob)
       players.push(bob)
@@ -416,11 +443,11 @@ class Battle
     name = gets.capitalize
     case race
     when "human"
-      player = Human.new(name: name.strip, current_health: 80, max_health: 80, strength: 6, block: 5, dodge: 5, player: true)
+      player = Human.new(name: name.strip, current_health: 80, max_health: 80, strength: 5, intelligence: 8, block: 5, dodge: 5, player: true)
     when "dragon"
-      player = Dragon.new(name: name.strip, current_health: 125, max_health: 125, strength: 8, block: 5, dodge: 2, player: true)
+      player = Dragon.new(name: name.strip, current_health: 125, max_health: 125, strength: 8, block: 5, intelligence: 6, dodge: 2, player: true)
     when "giant"
-      player = Giant.new(name: name.strip, current_health: 150, max_health: 150, strength: 10, block: 5, dodge: 1, player: true)
+      player = Giant.new(name: name.strip, current_health: 150, max_health: 150, strength: 10, block: 5, intelligence: 3, dodge: 1, player: true)
     else
       puts "how did we get here"
     end
