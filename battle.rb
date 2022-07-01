@@ -186,9 +186,10 @@ end
 
 class Splash < Action
   def use(attacker, targets)
+    puts attack_msg
     targets.each do |target|
       damage_result = calculate_damage(attacker, self.dmg_mod, target)
-      puts "#{attacker.name} attacks #{target.name} #{damage_result}"
+      puts "#{damage_result}"
     end
   end
 end
@@ -209,7 +210,7 @@ class DefaultPlayer
   end
 
   def attack(targets)
-    attack = SingleTarget.new(name: "attack", dmg_mod: 2, action_msg: "attacks")
+    attack = SingleTarget.new(name: "attack", dmg_mod: 2, attack_msg: "attacks")
     attack.use(self, targets)
   end
 
@@ -241,11 +242,8 @@ class Human < DefaultPlayer
   end
 
   has_action :throws_potion do |targets|
-    puts "#{self.name} has thrown a potion in the arena..."
-
-    targets.each do |target|
-      puts "...#{calculate_damage(self, 10, target)}"
-    end 
+    splash = Splash.new(name: "throw_potion", dmg_mod: 4, attack_msg: "#{self.name} throws a potion...")
+    splash.use(self, targets)
   end
 
   def self.all_player_actions
@@ -260,13 +258,8 @@ class Dragon < DefaultPlayer
   end
   
   has_action :fire_breath do |targets|
-    action_damage = 6 * self.strength
-
-    targets.each do |target|
-      target.current_health -= action_damage
-    end
-
-    puts "#{self.name} breaths fire over the arena dealing #{action_damage} damage to everyone else."
+    fire = Splash.new(name: "fire_breath", dmg_mod: 5, attack_msg: "#{self.name} breaths fire over the arena...")
+    fire.use(self, targets)
   end
 
   def self.all_player_actions
@@ -441,7 +434,3 @@ class Battle
 end
 
 Battle.new().begin
-
-# TODO: 
-
-# CHANGE ALL ATTACKS TO USE CALCULATE DAMAGE
