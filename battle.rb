@@ -124,7 +124,7 @@ end
 
 class Action
   include ActionAttributes
-  has_attributes :name, :dmg_mod, :type, :targets
+  has_attributes :name, :dmg_mod, :type, :targets, :attack_msg
 
   def calculate_damage(attacker, damage_mod, target, can_dodge = true)
     damage = 0
@@ -180,7 +180,7 @@ class SingleTarget < Action
     end
     
     damage_result = calculate_damage(attacker, self.dmg_mod, target)
-    puts "#{attacker.name} attacks #{target.name} #{damage_result}"
+    puts "#{attacker.name} #{self.attack_msg} #{target.name} #{damage_result}"
   end
 end
 
@@ -209,7 +209,7 @@ class DefaultPlayer
   end
 
   def attack(targets)
-    attack = SingleTarget.new(name: "attack", dmg_mod: 2, type: "single")
+    attack = SingleTarget.new(name: "attack", dmg_mod: 2, action_msg: "attacks")
     attack.use(self, targets)
   end
 
@@ -281,10 +281,8 @@ class Giant < DefaultPlayer
   end
   
   has_action :stomp do |targets|
-    target = pick_target(targets)
-
-    puts "#{self.name} stomps on #{target.name} #{calculate_damage(self, 5, target)}"
-    show_target_health(target)
+    stomp = SingleTarget.new(name: "Stomp", damage_mod: 5, attack_msg: "stomps on")
+    stomp.use(self, targets)
   end
 
   has_action :war_cry do |targets|
