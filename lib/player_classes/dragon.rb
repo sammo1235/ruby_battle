@@ -21,7 +21,7 @@ class Dragon < DefaultPlayer
     @action_count[:fire_breath] = @fire
   end
 
-  has_action :fire_breath do |targets| 
+  has_action :fire_breath do |targets|
     @fire.use(self, targets)
   end
 

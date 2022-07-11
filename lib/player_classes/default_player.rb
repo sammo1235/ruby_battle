@@ -15,7 +15,7 @@ module PlayerAttributes
 
     @attack = SingleTarget.new(name: "attack", user: self, dmg_mod: 4, action_msg: "attacks", count: 25)
     @prepare = Buff.new(name: "prepare", user: self, action_msg: "#{@name} hunkers down to prepare for coming attacks", count: 25)
-  
+
     @action_count = {
       attack: @attack,
       prepare: @prepare
@@ -68,27 +68,25 @@ module PlayerActions
   def player_turn(targets)
     actions = self.class.all_player_actions.map { |s| s.to_s }
 
-    msg =  "Pick an action: "
-    self.action_counts.values.each_with_index do |a, i|
+    msg = "Pick an action: "
+    action_counts.values.each_with_index do |a, i|
       if a.count <= 0
         corresponding_action = actions.index(a.name.strip.downcase)
         self.class.all_player_actions[corresponding_action].inspect
       else
-        msg += "[#{a.name} (#{a.count}/#{a.max_count})]" 
+        msg += "[#{a.name} (#{a.count}/#{a.max_count})]"
       end
     end
-
-    
 
     puts msg
     @action = gets
     player_turn(targets) unless actions.include?(@action.strip.downcase)
 
-    action_count_names = self.action_counts.values.map { |s| s.name.to_s }
+    action_count_names = action_counts.values.map { |s| s.name.to_s }
     i = actions.index(@action.strip.downcase)
     j = action_count_names.index(@action.strip.downcase)
 
-    if self.action_counts.values[j].count <= 0
+    if action_counts.values[j].count <= 0
       puts "That action has no more uses, please select another action"
       player_turn(targets)
       return
@@ -113,7 +111,7 @@ class DefaultPlayer
     targets[Random.new.rand(0..(targets.size - 1))]
   end
 
-  def attack(targets) 
+  def attack(targets)
     @attack.stat_val = @strength
     @attack.targets = targets
     @attack.use

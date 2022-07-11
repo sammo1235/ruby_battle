@@ -19,9 +19,8 @@ class Human < DefaultPlayer
     @potion = Splash.new(name: "potion", dmg_mod: 6, action_msg: "#{@name} throws a potion...", stat_val: @intelligence, count: 3)
     @trick = SingleTarget.new(name: "trick", user: self, targets: [self], action_msg: "doesn't fall for it and attacks", dmg_mod: 3)
 
-    @action_count[:potion] = @potion 
+    @action_count[:potion] = @potion
     @action_count[:trick] = @trick
-    
   end
 
   has_action :trick do |targets|
