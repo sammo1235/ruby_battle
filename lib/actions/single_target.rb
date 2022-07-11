@@ -1,5 +1,6 @@
 class SingleTarget < Action
   def use
+    super()
     targets = self.targets
     target = select_target(targets)
 
