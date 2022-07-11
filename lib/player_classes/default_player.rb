@@ -12,6 +12,14 @@ module PlayerAttributes
     attrs.each do |attr, value|
       instance_variable_set("@#{attr}", value)
     end
+
+    @attack = SingleTarget.new(name: "attack", user: self, dmg_mod: 4, action_msg: "attacks")
+    @prepare = Buff.new(name: "prepare", user: self, action_msg: "#{@name} hunkers down to prepare for coming attacks")
+  
+    @action_count = {
+      attack: @attack,
+      prepare: @prepare
+    }
   end
 
   module ClassMethods
@@ -60,7 +68,12 @@ module PlayerActions
   def player_turn(targets)
     actions = self.class.all_player_actions.map { |s| s.to_s }
 
-    puts "Pick an action: #{actions}"
+    msg =  "Pick an action: "
+    self.action_counts.values.each_with_index do |a, i|
+      msg += "[#{a.name} (#{a.count}/#{a.max_count})]"
+    end
+
+    puts msg
     action = gets
     player_turn(targets) unless actions.include?(action.strip.downcase)
 
@@ -85,13 +98,17 @@ class DefaultPlayer
     targets[Random.new.rand(0..(targets.size - 1))]
   end
 
-  def attack(targets)
-    attack = SingleTarget.new(user: self, targets: targets, dmg_mod: 4, action_msg: "attacks", stat_val: @strength)
-    attack.use
+  def attack(targets) 
+    @attack.stat_val = @strength
+    @attack.targets = targets
+    @attack.use
   end
 
   def prepare(var)
-    prepare = Buff.new(user: self, action_msg: "#{@name} hunkers down to prepare for coming attacks")
-    prepare.use("block", 5)
+    @prepare.use("block", 5)
+  end
+
+  def action_counts
+    @action_count
   end
 end
