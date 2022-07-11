@@ -22,7 +22,6 @@ module PlayerAttributes
 end
 
 module ActionAttributes
-  require 'colorize'
 
   def self.included(klass)
     klass.extend(ClassMethods)
@@ -253,7 +252,6 @@ class Human < DefaultPlayer
   has_action :trick do |targets|
     trick = SingleTarget.new(user: self, targets: [self], action_msg: "doesn't fall for it and attacks", dmg_mod: 3)
     trick.user = trick.select_target(targets)
-  
 
     puts "#{self.name} tries to talk their way out of an encounter with #{trick.user.name}..."
 
@@ -266,8 +264,8 @@ class Human < DefaultPlayer
     end
   end
 
-  has_action :throws_potion do |targets|
-    splash = Splash.new(name: "throw_potion", dmg_mod: 4, action_msg: "#{self.name} throws a potion...", stat_val: self.intelligence)
+  has_action :potion do |targets|
+    splash = Splash.new(name: "throw_potion", dmg_mod: 6, action_msg: "#{self.name} throws a potion...", stat_val: self.intelligence)
     splash.use(self, targets)
   end
 
@@ -336,28 +334,24 @@ class Battle
   end
 
   def shuffle_players
-    players.shuffle
-  end
-
-  def check_if_dead(players)
-    players.each do |player|
-      if player.current_health <= 0
-        puts "#{player.name} has been eliminated".red
-        # # `say #{player.name} has been eliminated` 
-        players.delete(player)
-        puts "players left: #{players}"
-      end
-    end
+    @players.shuffle
   end
 
   def player_update(players)
-    check_if_dead(players)
     puts "Totals:".light_blue
-    players.each do |player|
-      puts "#{player.name} (#{player.class}): #{player.current_health}/#{player.max_health} HP and #{player.block} block".light_blue
+    @players.each do |player|
+      if player.current_health <= 0
+        # # `say #{player.name} has been eliminated` 
+        @players.delete(player)
+        puts "#{player.name} has been eliminated".red
+      else
+        puts "#{player.name} (#{player.class}): #{player.current_health}/#{player.max_health} HP and #{player.block} block".light_blue
+      end
     end
     raise LastPlayerLeft, "#{players[0].name} is the last player remaining! VICTORY!!!" if players.size <= 1
     puts "=" * 8
+
+    @players
   end
 
 
@@ -365,14 +359,18 @@ class Battle
     users = setPlayers
     npcs = setNPCs
 
+    puts "The fighters are:".red
+    @players.each do |player|
+      puts "#{player.name} (#{player.class}): #{player.current_health}/#{player.max_health} HP".red
+    end
     # `say FIGHT`
     (1..100).each do |round|  
       # `say Round #{round}`
       puts "Round #{round}".green
-      players = shuffle_players
+      @players = shuffle_players
 
-      players.each_with_index do |current, i|
-        targets = players.clone 
+      @players.each_with_index do |current, i|
+        targets = @players.clone 
         targets.delete_at(i)
 
         if users.include?(current)
@@ -383,7 +381,7 @@ class Battle
           current.random_action(targets)
         end
         puts "..."
-        player_update(players)
+        @players = player_update(@players)
       end
       
       puts "press any key to continue to next round..."
@@ -396,18 +394,18 @@ class Battle
     count = Integer(gets) rescue nil
     raise InvalidPlayerCount, "please put in a valid number" unless count
 
-    names = ["Steve", "Sam", "Jess", "Scott", "Anneka", "Chelsea"]
+    names = ["Steve", "Sam", "Jess", "Scott", "Anneka", "Chelsea", "Jonny", "Corin", "Paris"]
 
     (1..count).each do |i|
       # TO LEARN: There has to be a better way to do this
       random = Random.new.rand(1..3)
       case random
       when 1
-        players.push(Human.new(name: names.sample, current_health: 80, max_health: 80, strength: 6, intelligence:8, block: 5, dodge: 5))
+        @players.push(Human.new(name: names.delete_at(rand(names.length)), current_health: 80, max_health: 80, strength: 6, intelligence:8, block: 5, dodge: 5))
       when 2
-        players.push(Dragon.new(name: names.sample, current_health: 125, max_health: 125, strength: 8, block: 5, intelligence: 5, dodge: 2))
+        @players.push(Dragon.new(name: names.delete_at(rand(names.length)), current_health: 125, max_health: 125, strength: 8, block: 5, intelligence: 5, dodge: 2))
       when 3
-        players.push(Giant.new(name: names.sample, current_health: 150, max_health: 150, strength: 10, block: 5, intelligence: 3, dodge: 1))
+        @players.push(Giant.new(name: names.delete_at(rand(names.length)), current_health: 150, max_health: 150, strength: 10, block: 5, intelligence: 3, dodge: 1))
       end
     end
   end
@@ -422,12 +420,12 @@ class Battle
       bob = Human.new(name: "bob", current_health: 80, max_health: 80, strength: 6, block: 5, dodge: 5, intelligence: 8, player: true)
       puts "you have chosen bob"
       current_players.push(bob)
-      players.push(bob)
+      @players.push(bob)
     else
       (1..player_count).each do |i|
         player = setPlayer
         current_players.push(player)
-        players.push(player)
+        @players.push(player)
       end
     end
     current_players
