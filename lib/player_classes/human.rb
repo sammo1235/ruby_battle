@@ -15,7 +15,6 @@ class Human < DefaultPlayer
     @strength = 4
     @block = 5
     @player ||= false
-
   end
 
   has_action :trick do |targets|
@@ -24,7 +23,7 @@ class Human < DefaultPlayer
 
     puts "#{@name} tries to talk their way out of an encounter with #{trick.user.name}..."
 
-    if (self.intelligence + Random.new.rand(1..10)) <= (trick.user.intelligence + Random.new.rand(1..10))
+    if (intelligence + Random.new.rand(1..10)) <= (trick.user.intelligence + Random.new.rand(1..10))
       trick.stat_val = trick.user.strength
       trick.use
     else
@@ -34,7 +33,7 @@ class Human < DefaultPlayer
   end
 
   has_action :potion do |targets|
-    splash = Splash.new(name: "throw_potion", dmg_mod: 6, action_msg: "#{@name} throws a potion...", stat_val: self.intelligence)
+    splash = Splash.new(name: "throw_potion", dmg_mod: 6, action_msg: "#{@name} throws a potion...", stat_val: intelligence)
     splash.use(self, targets)
   end
 

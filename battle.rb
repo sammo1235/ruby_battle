@@ -1,20 +1,21 @@
-require './lib/player_classes/default_player.rb'
-require './lib/actions/action.rb'
-require './lib/actions/single_target.rb'
-require './lib/actions/splash.rb'
-require './lib/actions/buff.rb'
-require './lib/player_classes/human.rb'
-require './lib/player_classes/dragon.rb'
-require './lib/player_classes/giant.rb'
+require "./lib/player_classes/default_player"
+require "./lib/actions/action"
+require "./lib/actions/single_target"
+require "./lib/actions/splash"
+require "./lib/actions/buff"
+require "./lib/player_classes/human"
+require "./lib/player_classes/dragon"
+require "./lib/player_classes/giant"
 
 class Battle
   class TooManyPlayersError < StandardError; end
+
   class LastPlayerLeft < StandardError; end
+
   class InvalidPlayerCount < StandardError; end
 
   attr_reader :players
   def initialize(*players)
-
     @players = players
     puts "Battle has been initialized"
     puts "=" * 8
@@ -28,7 +29,7 @@ class Battle
     puts "Totals:".light_blue
     @players.each do |player|
       if player.current_health <= 0
-        # # `say #{player.name} has been eliminated` 
+        # # `say #{player.name} has been eliminated`
         @players.delete(player)
         puts "#{player.name} has been eliminated".red
       else
@@ -41,23 +42,22 @@ class Battle
     @players
   end
 
-
   def begin
     users = setPlayers
-    npcs = setNPCs
+    setNPCs
 
     puts "The fighters are:".red
     @players.each do |player|
       puts "#{player.name} (#{player.class}): #{player.current_health}/#{player.max_health} HP".red
     end
     # `say FIGHT`
-    (1..100).each do |round|  
+    (1..100).each do |round|
       # `say Round #{round}`
       puts "Round #{round}".green
       @players = shuffle_players
 
       @players.each_with_index do |current, i|
-        targets = @players.clone 
+        targets = @players.clone
         targets.delete_at(i)
 
         if users.include?(current)
@@ -70,7 +70,7 @@ class Battle
         puts "..."
         @players = player_update(@players)
       end
-      
+
       puts "press any key to continue to next round..."
       gets
     end
@@ -78,7 +78,11 @@ class Battle
 
   def setNPCs
     puts "Select number of NPCs to fight against"
-    count = Integer(gets) rescue nil
+    count = begin
+      Integer(gets)
+    rescue
+      nil
+    end
     raise InvalidPlayerCount, "please put in a valid number" unless count
 
     names = ["Steve", "Sam", "Jess", "Scott", "Anneka", "Chelsea", "Jonny", "Corin", "Paris"]
@@ -99,11 +103,15 @@ class Battle
 
   def setPlayers
     puts "Select number of players"
-    player_count = Integer(gets) rescue nil
+    player_count = begin
+      Integer(gets)
+    rescue
+      nil
+    end
     raise InvalidPlayerCount, "please put in a valid number" unless player_count
     current_players = []
 
-    if player_count == 100 #lets dev skip character creation
+    if player_count == 100 # lets dev skip character creation
       bob = Human.new(name: "Bob", player: true)
       puts "you have chosen bob"
       current_players.push(bob)
@@ -142,7 +150,6 @@ class Battle
 
     player
   end
-
 end
 
-Battle.new().begin
+Battle.new.begin

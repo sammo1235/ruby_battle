@@ -16,7 +16,7 @@ class Dragon < DefaultPlayer
     @block = 5
     @player ||= false
   end
-  
+
   has_action :fire_breath do |targets|
     fire = Splash.new(name: "fire_breath", dmg_mod: 5, action_msg: "#{@name} breaths fire over the arena...", stat_val: @strength)
     fire.use(self, targets)
