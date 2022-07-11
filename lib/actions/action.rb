@@ -10,8 +10,8 @@ module ActionAttributes
     end
 
     @name ||= "addNameHere"
-    @count = 5
-    @max_count = 5
+    @count ||= 5
+    @max_count = @count
   end
 
   module ClassMethods
@@ -54,7 +54,7 @@ class Action
   def select_target(targets)
     target = targets.first
 
-    if user&.player == true
+    if (user&.player == true) && (targets.size > 1)
       target_names = []
       targets.each do |t|
         target_names.push(t.name.downcase)
@@ -77,7 +77,6 @@ class Action
   end
 
   def use
-    return unless @count > 0
     @count -= 1
   end
 end
