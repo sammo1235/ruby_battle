@@ -15,26 +15,31 @@ class Human < DefaultPlayer
     @strength = 4
     @block = 5
     @player ||= false
+
+    @potion = Splash.new(name: "potion", dmg_mod: 6, action_msg: "#{@name} throws a potion...", stat_val: @intelligence, count: 3)
+    @trick = SingleTarget.new(name: "trick", user: self, targets: [self], action_msg: "doesn't fall for it and attacks", dmg_mod: 3)
+
+    @action_count[:potion] = @potion
+    @action_count[:trick] = @trick
   end
 
   has_action :trick do |targets|
-    trick = SingleTarget.new(user: self, targets: [self], action_msg: "doesn't fall for it and attacks", dmg_mod: 3)
-    trick.user = trick.select_target(targets)
+    @trick.user = @trick.select_target(targets)
 
-    puts "#{@name} tries to talk their way out of an encounter with #{trick.user.name}..."
+    puts "#{@name} tries to talk their way out of an encounter with #{@trick.user.name}..."
 
-    if (intelligence + Random.new.rand(1..10)) <= (trick.user.intelligence + Random.new.rand(1..10))
-      trick.stat_val = trick.user.strength
-      trick.use
+    if (intelligence + Random.new.rand(1..10)) <= (@trick.user.intelligence + Random.new.rand(1..10))
+      @trick.stat_val = @trick.user.strength
+      @trick.use
     else
-      trick = Buff.new(user: self, action_msg: "#{@name} somehow succeeded. They escape to a corner to heal")
-      trick.use("health", 15)
+      @trick.count -= 1 unless @trick.count <= 0
+      @trick = Buff.new(user: self, action_msg: "#{@name} somehow succeeded. They escape to a corner to heal")
+      @trick.use("health", 15)
     end
   end
 
   has_action :potion do |targets|
-    splash = Splash.new(name: "throw_potion", dmg_mod: 6, action_msg: "#{@name} throws a potion...", stat_val: intelligence)
-    splash.use(self, targets)
+    @potion.use(self, targets)
   end
 
   def self.all_player_actions

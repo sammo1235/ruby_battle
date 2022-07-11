@@ -8,6 +8,10 @@ module ActionAttributes
     attrs.each do |attr, value|
       instance_variable_set("@#{attr}", value)
     end
+
+    @name ||= "addNameHere"
+    @count ||= 5
+    @max_count = @count
   end
 
   module ClassMethods
@@ -19,7 +23,7 @@ end
 
 class Action
   include ActionAttributes
-  has_attributes :user, :targets, :dmg_mod, :stat_val, :action_msg
+  has_attributes :name, :user, :targets, :dmg_mod, :stat_val, :action_msg, :count, :max_count
 
   def calculate_damage(attacker, damage_mod, target, can_dodge = true)
     if can_dodge == true
@@ -50,7 +54,7 @@ class Action
   def select_target(targets)
     target = targets.first
 
-    if user&.player == true
+    if (user&.player == true) && (targets.size > 1)
       target_names = []
       targets.each do |t|
         target_names.push(t.name.downcase)
@@ -70,5 +74,9 @@ class Action
     end
 
     target
+  end
+
+  def use
+    @count -= 1
   end
 end

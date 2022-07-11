@@ -1,8 +1,8 @@
-require "./lib/player_classes/default_player"
 require "./lib/actions/action"
 require "./lib/actions/single_target"
 require "./lib/actions/splash"
 require "./lib/actions/buff"
+require "./lib/player_classes/default_player"
 require "./lib/player_classes/human"
 require "./lib/player_classes/dragon"
 require "./lib/player_classes/giant"
@@ -19,6 +19,8 @@ class Battle
     @players = players
     puts "Battle has been initialized"
     puts "=" * 8
+
+    @graveyard = []
   end
 
   def shuffle_players

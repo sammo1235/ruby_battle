@@ -1,5 +1,6 @@
 class Buff < Action
   def use(stat, buff_mod)
+    super()
     case stat
     when "block"
       user.block += buff_mod

@@ -12,6 +12,14 @@ module PlayerAttributes
     attrs.each do |attr, value|
       instance_variable_set("@#{attr}", value)
     end
+
+    @attack = SingleTarget.new(name: "attack", user: self, dmg_mod: 4, action_msg: "attacks", count: 25)
+    @prepare = Buff.new(name: "prepare", user: self, action_msg: "#{@name} hunkers down to prepare for coming attacks", count: 25)
+
+    @action_count = {
+      attack: @attack,
+      prepare: @prepare
+    }
   end
 
   module ClassMethods
@@ -60,13 +68,31 @@ module PlayerActions
   def player_turn(targets)
     actions = self.class.all_player_actions.map { |s| s.to_s }
 
-    puts "Pick an action: #{actions}"
-    action = gets
-    player_turn(targets) unless actions.include?(action.strip.downcase)
+    msg = "Pick an action: "
+    action_counts.values.each_with_index do |a, i|
+      if a.count <= 0
+        corresponding_action = actions.index(a.name.strip.downcase)
+        self.class.all_player_actions[corresponding_action].inspect
+      else
+        msg += "[#{a.name} (#{a.count}/#{a.max_count})]"
+      end
+    end
 
-    i = actions.index(action.strip.downcase)
+    puts msg
+    @action = gets
+    player_turn(targets) unless actions.include?(@action.strip.downcase)
 
-    send(self.class.all_player_actions[i], targets) if actions.include?(action.strip.downcase)
+    action_count_names = action_counts.values.map { |s| s.name.to_s }
+    i = actions.index(@action.strip.downcase)
+    j = action_count_names.index(@action.strip.downcase)
+
+    if action_counts.values[j].count <= 0
+      puts "That action has no more uses, please select another action"
+      player_turn(targets)
+      return
+    end
+
+    send(self.class.all_player_actions[i], targets) if actions.include?(@action.strip.downcase)
   end
 end
 
@@ -86,12 +112,16 @@ class DefaultPlayer
   end
 
   def attack(targets)
-    attack = SingleTarget.new(user: self, targets: targets, dmg_mod: 4, action_msg: "attacks", stat_val: @strength)
-    attack.use
+    @attack.stat_val = @strength
+    @attack.targets = targets
+    @attack.use
   end
 
   def prepare(var)
-    prepare = Buff.new(user: self, action_msg: "#{@name} hunkers down to prepare for coming attacks")
-    prepare.use("block", 5)
+    @prepare.use("block", 5)
+  end
+
+  def action_counts
+    @action_count
   end
 end
