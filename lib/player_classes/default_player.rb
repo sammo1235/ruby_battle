@@ -13,8 +13,8 @@ module PlayerAttributes
       instance_variable_set("@#{attr}", value)
     end
 
-    @attack = SingleTarget.new(name: "attack", user: self, dmg_mod: 4, action_msg: "attacks")
-    @prepare = Buff.new(name: "prepare", user: self, action_msg: "#{@name} hunkers down to prepare for coming attacks")
+    @attack = SingleTarget.new(name: "attack", user: self, dmg_mod: 4, action_msg: "attacks", count: 25)
+    @prepare = Buff.new(name: "prepare", user: self, action_msg: "#{@name} hunkers down to prepare for coming attacks", count: 25)
   
     @action_count = {
       attack: @attack,
@@ -70,16 +70,31 @@ module PlayerActions
 
     msg =  "Pick an action: "
     self.action_counts.values.each_with_index do |a, i|
-      msg += "[#{a.name} (#{a.count}/#{a.max_count})]"
+      if a.count <= 0
+        corresponding_action = actions.index(a.name.strip.downcase)
+        self.class.all_player_actions[corresponding_action].inspect
+      else
+        msg += "[#{a.name} (#{a.count}/#{a.max_count})]" 
+      end
     end
 
+    
+
     puts msg
-    action = gets
-    player_turn(targets) unless actions.include?(action.strip.downcase)
+    @action = gets
+    player_turn(targets) unless actions.include?(@action.strip.downcase)
 
-    i = actions.index(action.strip.downcase)
+    action_count_names = self.action_counts.values.map { |s| s.name.to_s }
+    i = actions.index(@action.strip.downcase)
+    j = action_count_names.index(@action.strip.downcase)
 
-    send(self.class.all_player_actions[i], targets) if actions.include?(action.strip.downcase)
+    if self.action_counts.values[j].count <= 0
+      puts "That action has no more uses, please select another action"
+      player_turn(targets)
+      return
+    end
+
+    send(self.class.all_player_actions[i], targets) if actions.include?(@action.strip.downcase)
   end
 end
 
