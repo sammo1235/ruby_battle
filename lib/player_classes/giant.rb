@@ -3,6 +3,19 @@ class Giant < DefaultPlayer
   class << self
     attr_accessor :player_actions
   end
+
+  def initialize(*attrs)
+    super(*attrs)
+
+    @name ||= "GiantDefault"
+    @dodge = 0
+    @intelligence = 3
+    @current_health = 150
+    @max_health = 150
+    @strength = 7
+    @block = 10
+    @player ||= false
+  end
   
   has_action :stomp do |targets|
     stomp = SingleTarget.new(user: self, targets: targets, dmg_mod: 5, action_msg: "stomps on", stat_val: self.strength)

@@ -8,7 +8,6 @@ module PlayerAttributes
   class PlayerMustHaveNameError < StandardError; end
   def initialize(*attrs)
     attrs = attrs.select {|a| a.is_a? Hash }.first
-    raise PlayerMustHaveNameError unless attrs.keys.include? :name
     attrs.each do |attr, value|
       instance_variable_set("@#{attr}", value)
     end
@@ -115,12 +114,12 @@ class DefaultPlayer
   end
 
   def attack(targets)
-    attack = SingleTarget.new(user: self, targets: targets, dmg_mod: 4, action_msg: "attacks", stat_val: self.strength)
+    attack = SingleTarget.new(user: self, targets: targets, dmg_mod: 4, action_msg: "attacks", stat_val: @strength)
     attack.use
   end
 
   def prepare(var)
-    prepare = Buff.new(user: self, action_msg: "#{self.name} hunkers down to prepare for coming attacks")
+    prepare = Buff.new(user: self, action_msg: "#{@name} hunkers down to prepare for coming attacks")
     prepare.use("block", 5)
   end
 end

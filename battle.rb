@@ -88,11 +88,11 @@ class Battle
       random = Random.new.rand(1..3)
       case random
       when 1
-        @players.push(Human.new(name: names.delete_at(rand(names.length)), current_health: 80, max_health: 80, strength: 6, intelligence:8, block: 5, dodge: 5))
+        @players.push(Human.new(name: names.delete_at(rand(names.length))))
       when 2
-        @players.push(Dragon.new(name: names.delete_at(rand(names.length)), current_health: 125, max_health: 125, strength: 8, block: 5, intelligence: 5, dodge: 2))
+        @players.push(Dragon.new(name: names.delete_at(rand(names.length))))
       when 3
-        @players.push(Giant.new(name: names.delete_at(rand(names.length)), current_health: 150, max_health: 150, strength: 10, block: 5, intelligence: 3, dodge: 1))
+        @players.push(Giant.new(name: names.delete_at(rand(names.length))))
       end
     end
   end
@@ -104,7 +104,7 @@ class Battle
     current_players = []
 
     if player_count == 100 #lets dev skip character creation
-      bob = Human.new(name: "bob", current_health: 80, max_health: 80, strength: 6, block: 5, dodge: 5, intelligence: 8, player: true)
+      bob = Human.new(name: "Bob", player: true)
       puts "you have chosen bob"
       current_players.push(bob)
       @players.push(bob)
@@ -128,11 +128,11 @@ class Battle
     name = gets.capitalize
     case race
     when "human"
-      player = Human.new(name: name.strip, current_health: 80, max_health: 80, strength: 5, intelligence: 8, block: 5, dodge: 5, player: true)
+      player = Human.new(name: name.strip, player: true)
     when "dragon"
-      player = Dragon.new(name: name.strip, current_health: 125, max_health: 125, strength: 8, block: 5, intelligence: 6, dodge: 2, player: true)
+      player = Dragon.new(name: name.strip, player: true)
     when "giant"
-      player = Giant.new(name: name.strip, current_health: 150, max_health: 150, strength: 10, block: 5, intelligence: 3, dodge: 1, player: true)
+      player = Giant.new(name: name.strip, player: true)
     else
       puts "how did we get here"
     end
