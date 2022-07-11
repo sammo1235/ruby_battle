@@ -19,6 +19,8 @@ class Battle
     @players = players
     puts "Battle has been initialized"
     puts "=" * 8
+
+    @graveyard = []
   end
 
   def shuffle_players
