@@ -2,10 +2,12 @@ require "./lib/actions/action"
 require "./lib/actions/single_target"
 require "./lib/actions/splash"
 require "./lib/actions/buff"
-require "./lib/player_classes/default_player"
-require "./lib/player_classes/human"
-require "./lib/player_classes/dragon"
-require "./lib/player_classes/giant"
+require "./lib/player_classes/default_archetype"
+require "./lib/player_classes/rogue"
+require "./lib/player_races/default_player"
+require "./lib/player_races/human"
+require "./lib/player_races/dragon"
+require "./lib/player_races/giant"
 
 class Battle
   class TooManyPlayersError < StandardError; end

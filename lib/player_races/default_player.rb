@@ -20,6 +20,9 @@ module PlayerAttributes
       attack: @attack,
       prepare: @prepare
     }
+
+    @archetype_name ||= "rogue"
+    @player_archetype = set_archetype
   end
 
   module ClassMethods
@@ -91,8 +94,14 @@ module PlayerActions
       player_turn(targets)
       return
     end
-
-    send(self.class.all_player_actions[i], targets) if actions.include?(@action.strip.downcase)
+    
+    @player_archetype.class.all_archetype_actions.each do |action|
+      if self.class.all_player_actions[i] == action
+        @player_archetype.sneak_attack(self, targets) if actions.include?(@action.strip.downcase)
+      else
+        send(self.class.all_player_actions[i], targets) if actions.include?(@action.strip.downcase)
+      end
+    end
   end
 end
 
@@ -104,7 +113,7 @@ class DefaultPlayer
   include PlayerAttributes
   include PlayerActions
 
-  has_attributes :name, :current_health, :max_health, :strength, :intelligence, :damage, :block, :dodge, :player
+  has_attributes :name, :current_health, :max_health, :strength, :intelligence, :damage, :block, :dodge, :player, :archetype_name
   has_actions :attack, :prepare
 
   def pick_target(targets)
@@ -123,5 +132,27 @@ class DefaultPlayer
 
   def action_counts
     @action_count
+  end
+
+  def set_archetype
+    case @archetype_name
+    when 'rogue'
+      Rogue.new()
+    end
+  end
+
+  def apply_archetype
+    @current_health += @player_archetype.current_health
+    @max_health += @player_archetype.max_health
+    @dodge += @player_archetype.dodge
+    @strength += @player_archetype.strength
+    @intelligence += @player_archetype.intelligence
+    @block += @player_archetype.block
+
+    @player_archetype.class.all_archetype_actions.each_with_index do |action, i|
+      self.class.player_actions << action
+      archetype_action_count =  @player_archetype.action_count
+      @action_count[action] = archetype_action_count[action]
+    end
   end
 end
